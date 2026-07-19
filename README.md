@@ -39,12 +39,12 @@ npm run dev
 目標：讓教師可管理課程與學生，從學生的提問、測驗與概念弱點辨識教材痛點，並發布適用於全班的補充內容。
 
 - [ ] 建立帳號與角色：學生、教師；限制教師端管理功能僅供教師使用。
-- [ ] 建立資料庫與資料模型：`User`、`Course`、`Enrollment`、`LearningEvent`、`TeacherMaterialPatch`。
+- [x] 建立 MVP 資料 repository 與資料模型：`User`、`Course`、`Enrollment`、`LearningEvent`、`TeacherMaterialPatch`；目前以 localStorage 實作，保留替換資料庫的介面。
 - [ ] 實作教師建立課程、建立班級、加入／移除學生，以及將章節教材指派給課程的流程。
-- [ ] 將學生的答題、提問、概念分數與誤解記錄為 `LearningEvent`，供課程層級彙整。
-- [ ] 建立教師 dashboard：班級進度、低分概念、常見誤解、最常被提問的段落與學生完成率。
+- [x] 將學生的答題、提問、概念分數與個人化補充記錄為 `LearningEvent`，供課程層級彙整。
+- [x] 建立 MVP 教師 dashboard：班級進度、低分概念、測驗正確率、近期學習活動與教材補充數量。
 - [ ] 建立教材痛點頁面：依 concept ID、錯誤次數、分數與提問次數排序，讓教師找出需要改善的教材內容。
-- [ ] 讓教師建立並發布 `TeacherMaterialPatch`；學生閱讀器要標示「教師補充」，並與個人 AI patch 一起顯示。
+- [x] 讓教師建立並發布 `TeacherMaterialPatch`；學生閱讀器標示「Teacher material」，並與個人 AI patch 分開顯示。
 - [ ] 在 Vercel 或目標部署環境驗證 Node runtime、PDF 套件、上傳 payload、資料庫連線與正式 OpenAI key 設定。
 
 ## 平行開發與整合規則
