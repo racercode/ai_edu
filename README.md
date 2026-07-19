@@ -19,7 +19,9 @@ npm run dev
 - `mock`、`live`、`auto` API 模式與 server-only OpenAI key
 - 文字型 PDF 上傳、文字擷取、AI 教材轉換與確認後載入
 
-## TODO — Part 1：核心 Demo 穩定化
+## TODO — Part 1：個人化學習體驗（負責人 A）
+
+目標：讓單一學生從匯入教材、閱讀、提問、答題到取得個人化補充的流程可靠可展示。
 
 - [ ] 完成 `npm run typecheck`、lint 與 production build，修正所有 SDK／Next.js 相容性問題。
 - [ ] 補齊 Vitest：資料契約、學習分數、patch 合併與 Undo、Markdown、mock API。
@@ -27,12 +29,30 @@ npm run dev
 - [ ] 讓 Tutor 回覆中的引用可點選並自動捲動、聚焦到對應教材區塊。
 - [ ] 加入真正的手機版 layout：Tutor 改底部抽屜，章節資訊收合，不維持桌面三欄。
 - [ ] 將 OpenAI 的輸出 JSON Schema 改為完整、由 Zod 契約衍生的 strict schema；保留本地 Zod 驗證與一次重試。
-
-## TODO — Part 2：PDF 匯入與上線整合
-
 - [ ] 在預覽畫面顯示生成的區塊與兩題測驗內容，讓使用者檢查後再開始學習。
 - [ ] 強化 PDF 擷取的錯誤分類、頁數/檔案大小測試與文字品質提示；掃描檔持續明確拒絕（不導入 OCR）。
 - [ ] 為 PDF 匯入加入 API、無 key、超限、掃描檔與模型無效輸出的自動化測試。
 - [ ] 加入匯入中斷與重試 UX，並限制模型輸入長度時向使用者說明截斷狀態。
-- [ ] 在 Vercel 或目標部署環境驗證 Node runtime、PDF 套件與上傳 payload 限制；不保存原始 PDF。
-- [ ] 建立 demo 操作檢查表、備援錄影與正式 OpenAI key 的部署設定。
+
+## TODO — Part 2：多人課程平台與教師端（負責人 B）
+
+目標：讓教師可管理課程與學生，從學生的提問、測驗與概念弱點辨識教材痛點，並發布適用於全班的補充內容。
+
+- [ ] 建立帳號與角色：學生、教師；限制教師端管理功能僅供教師使用。
+- [ ] 建立資料庫與資料模型：`User`、`Course`、`Enrollment`、`LearningEvent`、`TeacherMaterialPatch`。
+- [ ] 實作教師建立課程、建立班級、加入／移除學生，以及將章節教材指派給課程的流程。
+- [ ] 將學生的答題、提問、概念分數與誤解記錄為 `LearningEvent`，供課程層級彙整。
+- [ ] 建立教師 dashboard：班級進度、低分概念、常見誤解、最常被提問的段落與學生完成率。
+- [ ] 建立教材痛點頁面：依 concept ID、錯誤次數、分數與提問次數排序，讓教師找出需要改善的教材內容。
+- [ ] 讓教師建立並發布 `TeacherMaterialPatch`；學生閱讀器要標示「教師補充」，並與個人 AI patch 一起顯示。
+- [ ] 在 Vercel 或目標部署環境驗證 Node runtime、PDF 套件、上傳 payload、資料庫連線與正式 OpenAI key 設定。
+
+## 平行開發與整合規則
+
+為避免兩位開發者互相阻塞，先凍結 `Chapter`、`QuizItem`、`ContentPatch` 以及 Tutor／Personalize API 回應契約。
+
+- A 維護閱讀器、學生操作流程與既有 `/api/tutor`、`/api/personalize`；先使用 localStorage，但將讀寫抽成 service/repository 介面。
+- B 建立帳號、課程、教師頁面與資料庫實作；不改動閱讀器元件或既有 AI endpoint 的回應格式。
+- 整合時，A 將 localStorage 中的學習行為同步為 `LearningEvent`；B 的教師端以事件彙整教材痛點。
+- `TeacherMaterialPatch` 沿用 patch 的插入方式，但需有教師來源與課程範圍；學生個人 AI patch 保持私有。
+- 最後加入完整 demo 操作檢查表、教師端驗收情境與備援錄影。
