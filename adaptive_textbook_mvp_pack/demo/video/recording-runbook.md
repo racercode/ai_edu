@@ -41,10 +41,11 @@ output/demo-video/adaptive-textbook-demo.webm
 
 ```text
 output/demo-video/01-opening.png
-output/demo-video/02-peer-notes.png
-output/demo-video/03-wrong-answer.png
-output/demo-video/04-jump-concept.png
-output/demo-video/05-ai-highlight-note.png
+output/demo-video/01-read-chapter-quiz.png
+output/demo-video/02-wrong-answer-explanation.png
+output/demo-video/03-ai-remediation.png
+output/demo-video/04-add-peer-note.png
+output/demo-video/05-next-student-peer-notes.png
 ```
 
 ## 轉成 MP4
@@ -58,12 +59,12 @@ ffmpeg -i output/demo-video/adaptive-textbook-demo.webm -c:v libx264 -pix_fmt yu
 ## 腳本會做的事
 
 1. 開啟學生課本頁面
-2. 清除 localStorage，回到乾淨 demo 狀態
-3. 錄下原始課本畫面
-4. hover 共筆標記
-5. 固定選錯 B
-6. 顯示正解、跳到對應觀念
-7. 一鍵化重點並加入 AI 個人筆記
+2. 錄下學生讀完整章後開始做題
+3. 固定選錯 B
+4. 顯示正解與對應章節觀念連結
+5. 跳到對應觀念，AI 自動畫螢光重點並動態修改教材
+6. 學生把心得加入共筆
+7. hover 共筆，模擬下一位學生查看共筆與常見錯誤
 8. 儲存影片和關鍵畫面
 
 如果前端按鈕文字有改，請同步更新 `scripts/record-demo-video.ps1` 裡的按鈕名稱。

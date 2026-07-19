@@ -78,29 +78,29 @@ async (page) => {
 
 $wrongAnswerStep = Write-Step "02-wrong-answer.js" @'
 async (page) => {
-  await page.getByRole("button", { name: /Demo：學生選錯答案 B/ }).click();
+  await page.locator("[data-testid='demo-wrong-answer']").click();
   await page.waitForTimeout(1800);
 }
 '@
 
 $jumpConceptStep = Write-Step "03-jump-concept.js" @'
 async (page) => {
-  await page.getByRole("button", { name: /跳到對應觀念/ }).first().click();
-  await page.waitForTimeout(2400);
+  await page.locator("[data-testid='jump-concept']").click();
+  await page.waitForTimeout(2600);
 }
 '@
 
 $addPeerNoteStep = Write-Step "04-add-peer-note.js" @'
 async (page) => {
-  await page.getByRole("button", { name: /新增到共筆/ }).click();
+  await page.locator("[data-testid='add-peer-note']").click();
   await page.waitForTimeout(1200);
 }
 '@
 
 $nextStudentStep = Write-Step "05-next-student-peer-note.js" @'
 async (page) => {
-  await page.getByText("共筆").first().hover();
-  await page.waitForTimeout(2000);
+  await page.locator("[data-testid='peer-marker']").hover();
+  await page.waitForTimeout(2200);
 }
 '@
 

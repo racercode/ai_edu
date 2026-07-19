@@ -298,11 +298,53 @@ button:disabled {
   box-shadow: 0 18px 46px rgba(241, 181, 59, 0.16);
 }
 
+.highlightPulse {
+  animation: pulseHighlight 1150ms ease-out both;
+}
+
 .highlightText {
   padding: 0.1em 0.18em;
-  background: linear-gradient(transparent 48%, #fff07a 48%);
+  background: linear-gradient(transparent 48%, #fff07a 48%) left / 100% 100% no-repeat;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+
+.rewritableText {
+  position: relative;
+  display: inline;
+  min-height: 1.5em;
+  padding: 0.04em 0.1em;
+  border-radius: 4px;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease;
+}
+
+.deletingText {
+  color: #8d4a42;
+  background-color: rgba(255, 240, 237, 0.72);
+}
+
+.typingText {
+  color: var(--ai);
+  background-color: rgba(242, 237, 255, 0.72);
+}
+
+.deletingText::after,
+.typingText::after {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: -0.15em;
+  content: "";
+  background: currentColor;
+  animation: caretBlink 780ms steps(1) infinite;
+}
+
+.highlightSweep {
+  background-size: 0% 100%;
+  animation: highlightSweep 950ms ease-out 160ms forwards;
 }
 
 .peerMarker {
@@ -512,6 +554,35 @@ button:disabled {
   background: #f8f5ff;
   border: 1px solid #d8caff;
   border-radius: 8px;
+}
+
+.thinkingCard,
+.revealCard,
+.generatedNote {
+  animation: cardReveal 620ms ease-out both;
+}
+
+.thinkingDots {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.thinkingDots span {
+  width: 7px;
+  height: 7px;
+  background: var(--ai);
+  border-radius: 999px;
+  animation: thinkingBounce 900ms ease-in-out infinite;
+}
+
+.thinkingDots span:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.thinkingDots span:nth-child(3) {
+  animation-delay: 240ms;
 }
 
 .studentReflectionBox strong {
@@ -889,6 +960,67 @@ button:disabled {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseHighlight {
+  0% {
+    box-shadow: 0 0 0 rgba(241, 181, 59, 0);
+  }
+
+  45% {
+    box-shadow: 0 0 0 7px rgba(241, 181, 59, 0.18);
+  }
+
+  100% {
+    box-shadow: 0 18px 46px rgba(241, 181, 59, 0.16);
+  }
+}
+
+@keyframes highlightSweep {
+  from {
+    background-size: 0% 100%;
+  }
+
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+@keyframes thinkingBounce {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes caretBlink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+
+  49%,
+  100% {
+    opacity: 0;
   }
 }
 

@@ -2,7 +2,6 @@
 
 import {
   BookOpen,
-  CheckCircle2,
   MessageSquarePlus,
   MousePointer2,
   RotateCcw,
@@ -24,335 +23,433 @@ type DemoStage =
   | "ai-remediated"
   | "peer-note-added";
 
-type DemoFlow = {
-  questionId: "boundary-evidence";
-  correctAnswerId: "A";
-  wrongAnswerId: "B";
-  targetConceptTitle: string;
-  misconception: string;
-  highlightText: string;
-  aiNoteTitle: string;
-  aiNoteBody: string;
-  studentReflection: string;
-};
+type AiRevealStep = 0 | 1 | 2 | 3 | 4;
+type RewriteMode = "idle" | "deleting" | "typing" | "done";
 
-const demoFlow: DemoFlow = {
+const demoFlow = {
   questionId: "boundary-evidence",
   correctAnswerId: "A",
   wrongAnswerId: "B",
-  targetConceptTitle: "核心概念：海底擴張與張裂型邊界",
-  misconception: "常見錯誤觀念：把「海溝、板塊靠近、隱沒」的聚合型特徵，套用到中洋脊與海底擴張的情境。",
-  highlightText: "中洋脊附近的岩漿上升並冷卻，會形成新的海洋地殼；岩石年齡會由中洋脊向兩側逐漸變老。",
-  aiNoteTitle: "AI 個人化筆記：看到中洋脊，先想到張裂",
+  targetConceptTitle: "從海底擴張到板塊構造",
+  misconception: "你把「海底擴張」理解成只有岩漿把海床往兩側推開，忽略了磁條帶、地震帶與海溝一起指向板塊邊界。",
+  originalConceptText: "海洋地殼在中洋脊形成後，會向兩側移動，並成為海底擴張的重要證據。",
+  personalizedConceptText:
+    "海洋地殼在中洋脊形成後會向兩側移動；但它不是無限制累積，而是在海溝附近隱沒回地函，形成「生成到回收」的板塊循環。",
+  aiNoteTitle: "AI 補強筆記：板塊是一個循環系統",
   aiNoteBody:
-    "這題答錯的關鍵不是名詞記不熟，而是證據鏈接錯。若題目出現中洋脊、淺源地震、岩石年齡由中心向兩側變老，代表兩側板塊正在遠離，岩漿上升形成新的海洋地殼，因此應判斷為張裂型邊界。聚合型邊界才常與海溝、隱沒帶和較深震源有關。",
+    "請把海底擴張想成板塊運動的一段證據鏈：中洋脊產生新的海洋地殼，磁條帶記錄兩側對稱的擴張歷史；地震與火山集中在邊界，說明板塊不是只往外推，而是在另一端隱沒、回收。答題時看到「只形成、不回收」或「只和海底有關」通常就是錯誤選項。",
   studentReflection:
-    "我的理解：看到中洋脊和岩石年齡往兩側變老，要先判斷是新的海洋地殼在中間生成，所以是張裂型邊界，不是聚合型。"
-};
+    "我原本以為中洋脊一直製造新的海床就能解釋板塊移動，但現在知道還要連到海溝隱沒與地震火山帶，才是完整的板塊構造觀念。"
+} as const;
 
 const initialPeerNotes: PeerNote[] = [
   {
     author: "同學 A",
     kind: "student",
-    body: "我把這段理解成：地震不是隨機分布，而是沿著板塊交界排成帶狀，所以可以反推板塊邊界。"
+    body: "我把它記成「中洋脊新增、海溝回收」。這樣比較不會只想到海底擴張，忘記板塊還有隱沒。"
   },
   {
     author: "同學 B",
     kind: "student",
-    body: "中洋脊的重點是「新的海洋地殼在中間生成」，所以岩石年齡會從中間往兩側變老。"
+    body: "磁條帶是關鍵證據，因為它像海床的時間軸，可以看出中洋脊兩側是對稱地往外移動。"
   }
 ];
 
 const quizOptions = [
   {
     id: "A",
-    label: "張裂型邊界，因為板塊彼此遠離，岩漿上升並形成新的海洋地殼。"
+    label: "板塊邊界同時包含新地殼生成與舊地殼隱沒，能解釋磁條帶、地震與火山的分布。"
   },
   {
     id: "B",
-    label: "聚合型邊界，因為板塊彼此靠近，海洋地殼會隱沒到地函中。"
+    label: "海底擴張只表示岩漿在中洋脊不斷堆高，所以海洋地殼會永久增加，不需要隱沒。"
   },
   {
     id: "C",
-    label: "錯動型邊界，因為板塊水平滑移，所以岩石年齡會對稱分布。"
+    label: "板塊運動主要由潮汐造成，因此地震與火山應平均分布在各大洋中央。"
   },
   {
     id: "D",
-    label: "板塊內部，因為地震只集中在海洋地殼中央，不代表板塊邊界。"
+    label: "磁條帶只反映海水鹽度變化，和海底擴張或板塊移動沒有直接關係。"
   }
 ];
 
 export default function StudentTextbookPrototype() {
   const conceptRef = useRef<HTMLElement | null>(null);
+  const revealTimersRef = useRef<number[]>([]);
   const [stage, setStage] = useState<DemoStage>("ready-for-quiz");
   const [peerNotes, setPeerNotes] = useState(initialPeerNotes);
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
+  const [showAnswer, setShowAnswer] = useState(false);
   const [highlightConcept, setHighlightConcept] = useState(false);
   const [aiNoteVisible, setAiNoteVisible] = useState(false);
-  const [peerNoteAdded, setPeerNoteAdded] = useState(false);
+  const [aiRevealStep, setAiRevealStep] = useState<AiRevealStep>(0);
+  const [rewriteMode, setRewriteMode] = useState<RewriteMode>("idle");
+  const [conceptText, setConceptText] = useState(demoFlow.originalConceptText);
+  const [selectionPanelVisible, setSelectionPanelVisible] = useState(false);
 
-  const isWrong = selectedAnswerId !== null && selectedAnswerId !== demoFlow.correctAnswerId;
-  const status = useMemo(() => {
-    const labels: Record<DemoStage, string> = {
-      "ready-for-quiz": "已讀完整章，開始做題",
-      "wrong-answer": "答錯，AI 顯示解析與章節連結",
-      "jumped-to-concept": "已跳到對應觀念",
-      "ai-remediated": "AI 已畫重點並修改教材",
-      "peer-note-added": "心得已加入共筆，下一位學生可查看"
-    };
-    return labels[stage];
-  }, [stage]);
+  const isWrongAnswer = selectedAnswerId === demoFlow.wrongAnswerId && showAnswer;
+  const isCorrectAnswer = selectedAnswerId === demoFlow.correctAnswerId && showAnswer;
+  const peerNoteAdded = stage === "peer-note-added";
+
+  const statusText = useMemo(() => {
+    if (stage === "peer-note-added") return "下一位學生可看到新增共筆與常見錯誤觀念";
+    if (aiRevealStep === 4) return "AI 已完成補強：螢光重點與專屬筆記已加入教材";
+    if (aiRevealStep === 3) return "AI 正在把改寫後的重點標成螢光";
+    if (aiRevealStep === 2) return rewriteMode === "deleting" ? "AI 正在刪除容易誤解的教材表述" : "AI 正在逐字加入你的補強版本";
+    if (aiRevealStep === 1) return "AI 正在分析答錯原因與對應觀念";
+    if (stage === "wrong-answer") return "已偵測錯答，請跳回對應觀念";
+    return "學生正在閱讀完整章節並準備作答";
+  }, [aiRevealStep, rewriteMode, stage]);
+
+  function clearRevealTimers() {
+    revealTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    revealTimersRef.current = [];
+  }
 
   function resetDemo() {
+    clearRevealTimers();
     setStage("ready-for-quiz");
     setPeerNotes(initialPeerNotes);
     setSelectedAnswerId(null);
+    setShowAnswer(false);
     setHighlightConcept(false);
     setAiNoteVisible(false);
-    setPeerNoteAdded(false);
+    setAiRevealStep(0);
+    setRewriteMode("idle");
+    setConceptText(demoFlow.originalConceptText);
+    setSelectionPanelVisible(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function answerQuestion(optionId: string) {
-    setSelectedAnswerId(optionId);
-    setStage(optionId === demoFlow.correctAnswerId ? "ready-for-quiz" : "wrong-answer");
+  function submitWrongAnswer() {
+    clearRevealTimers();
+    setSelectedAnswerId(demoFlow.wrongAnswerId);
+    setShowAnswer(true);
+    setStage("wrong-answer");
+    setAiRevealStep(0);
+    setHighlightConcept(false);
+    setAiNoteVisible(false);
+    setRewriteMode("idle");
+    setConceptText(demoFlow.originalConceptText);
+    setSelectionPanelVisible(false);
   }
 
-  function demoAnswerWrongQuestion() {
-    answerQuestion(demoFlow.wrongAnswerId);
-    window.setTimeout(() => {
-      document.getElementById(demoFlow.questionId)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
+  function queueReveal(callback: () => void, delay: number) {
+    const timer = window.setTimeout(callback, delay);
+    revealTimersRef.current.push(timer);
+  }
+
+  function animateConceptRewrite(startDelay: number) {
+    const originalChars = Array.from(demoFlow.originalConceptText);
+    const personalizedChars = Array.from(demoFlow.personalizedConceptText);
+    const deleteSpeed = 28;
+    const typeSpeed = 34;
+    const deleteDuration = originalChars.length * deleteSpeed;
+    const typeStart = startDelay + deleteDuration + 320;
+    const typeDuration = personalizedChars.length * typeSpeed;
+
+    queueReveal(() => {
+      setAiRevealStep(2);
+      setRewriteMode("deleting");
+    }, startDelay);
+
+    originalChars.forEach((_, index) => {
+      queueReveal(() => {
+        setConceptText(originalChars.slice(0, originalChars.length - index - 1).join(""));
+      }, startDelay + (index + 1) * deleteSpeed);
+    });
+
+    queueReveal(() => setRewriteMode("typing"), typeStart - 120);
+
+    personalizedChars.forEach((_, index) => {
+      queueReveal(() => {
+        setConceptText(personalizedChars.slice(0, index + 1).join(""));
+      }, typeStart + (index + 1) * typeSpeed);
+    });
+
+    queueReveal(() => {
+      setRewriteMode("done");
+      setAiRevealStep(3);
+      setHighlightConcept(true);
+    }, typeStart + typeDuration + 320);
+
+    queueReveal(() => {
+      setAiRevealStep(4);
+      setHighlightConcept(true);
+      setAiNoteVisible(true);
+      setStage("ai-remediated");
+    }, typeStart + typeDuration + 1700);
   }
 
   function jumpToTargetConcept() {
-    conceptRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    clearRevealTimers();
     setStage("jumped-to-concept");
+    setAiRevealStep(0);
+    setHighlightConcept(false);
+    setAiNoteVisible(false);
+    setRewriteMode("idle");
+    setConceptText(demoFlow.originalConceptText);
+    setSelectionPanelVisible(false);
 
-    window.setTimeout(() => {
-      analyzeMisconceptionAndModifyTextbook();
-    }, 700);
+    conceptRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    queueReveal(() => setAiRevealStep(1), 650);
+    animateConceptRewrite(1850);
   }
 
-  function analyzeMisconceptionAndModifyTextbook() {
-    setHighlightConcept(true);
-    setAiNoteVisible(true);
-    setStage("ai-remediated");
-  }
-
-  function addReflectionToPeerNotes() {
-    if (peerNoteAdded) return;
-
+  function addStudentPeerNote() {
     setPeerNotes((current) => [
       ...current,
       {
-        author: "我",
-        kind: "student",
+        author: "你的共筆",
+        kind: "ai",
         body: demoFlow.studentReflection
       },
       {
-        author: "AI 整理",
-        kind: "ai",
-        body: "這位學生的關鍵整理是：中洋脊代表張裂與新海洋地殼生成；海溝與隱沒才較常對應聚合型邊界。"
-      },
-      {
-        author: "常見錯誤",
+        author: "AI 常見錯誤觀念",
         kind: "misconception",
-        body: demoFlow.misconception
+        body: "常見錯誤：只記得中洋脊會產生新海床，卻忘記海溝隱沒會回收舊海床，因此無法把海底擴張連到完整的板塊構造。"
       }
     ]);
-    setPeerNoteAdded(true);
     setStage("peer-note-added");
+    setSelectionPanelVisible(false);
   }
 
   return (
     <main className="studentScene">
-      <section className="bookChrome" aria-label="學生閱讀畫面">
+      <div className="bookChrome">
         <div className="readerTop">
-          <div className="courseLabel">
-            <BookOpen size={18} />
-            高中地球科學 2
-          </div>
-          <div className="readingState">{status}</div>
-          <button className="quietReset" type="button" onClick={resetDemo} title="重置 demo">
-            <RotateCcw size={16} />
+          <span className="courseLabel">
+            <BookOpen size={18} /> 高中地球科學・學生閱讀頁
+          </span>
+          <span className="readingState">{statusText}</span>
+          <button className="quietReset" onClick={resetDemo} type="button" aria-label="重播 demo">
+            <RotateCcw size={18} />
           </button>
         </div>
 
         <article className="textbookPage">
-          <header className="pageHeader">
-            <p>第二章 地球內部與板塊運動</p>
-            <h1>板塊構造學說：從全球地震帶到板塊邊界</h1>
-            <div className="orangeRule" />
+          <header className="chapterHeader">
+            <p>第 4 章・動態的地球</p>
+            <h1>板塊構造與海底擴張</h1>
+            <div className="chapterMeta">
+              <span>4-2</span>
+              <span>觀念建構</span>
+              <span>學生個人化教材</span>
+            </div>
           </header>
 
-          <section className="learningGoals">
-            <h2>學習目標</h2>
-            <p>完成本節後，你應能：</p>
-            <ol>
-              <li>說明全球地震、火山與造山活動的分布如何支持板塊構造學說。</li>
-              <li>比較張裂型、聚合型與錯動型板塊邊界的相對運動、受力與地形特徵。</li>
-              <li>根據震源深度、岩石類型與地質構造，推論未知地區的板塊邊界類型。</li>
-            </ol>
-          </section>
-
-          <TextSection title="一、從海底擴張到板塊構造">
+          <section className="sectionBody">
+            <h2>一、從海底擴張到板塊構造</h2>
             <p>
-              20 世紀中期，科學家利用全球地震觀測網累積大量資料後，發現地震並非平均散布於地球表面，
-              而是集中成數條狹長、近乎連續的地震帶。
-              <PeerMarker notes={peerNotes} />
-              其中最明顯的包括環太平洋地震帶、歐亞地震帶與中洋脊地震帶。
+              二十世紀中葉，科學家利用聲納繪製海底地形，發現大洋中央存在連續的中洋脊。中洋脊附近熱流量高、火山活動旺盛，顯示地函物質可能在此上升並形成新的海洋地殼。
             </p>
             <p>
-              這些地震帶與全球火山帶大致重合，也常沿著中洋脊、海溝、島弧及大型山脈分布。這項空間上的一致性暗示：
-              地震、火山與造山活動不是彼此獨立的事件，而可能由同一套地球內部作用所控制。
+              海底岩石保留了地磁方向。當地球磁場反轉時，新形成的玄武岩會記錄當時的磁場方向，因此中洋脊兩側出現對稱的磁條帶。這項證據支持「海底擴張」：新的海洋地殼在中洋脊形成，並逐漸向兩側移動。
             </p>
-          </TextSection>
 
-          <section
-            ref={conceptRef}
-            className={`conceptBox ${highlightConcept ? "highlightedConcept" : ""}`}
-            id="concept-seafloor-spreading"
-          >
-            <div className="conceptTitleRow">
-              <strong>{demoFlow.targetConceptTitle}</strong>
-            </div>
-            <p>
-              <span className={highlightConcept ? "highlightText" : ""}>{demoFlow.highlightText}</span>
-              這代表中洋脊兩側的板塊正在彼此遠離，因此中洋脊常被視為張裂型邊界的重要證據。
-            </p>
-          </section>
+            <section
+              ref={conceptRef}
+              className={`conceptBox ${highlightConcept ? "highlightedConcept highlightPulse" : ""}`}
+            >
+              <div className="conceptTitleRow">
+                <strong>{demoFlow.targetConceptTitle}</strong>
+                <PeerMarker notes={peerNotes} />
+              </div>
+              <p>
+                海底擴張並不是孤立的現象。若新的海洋地殼持續生成，地球表面面積卻沒有增加，代表某些地方必須同時發生舊地殼的回收。
+                <TextHighlight active={highlightConcept} mode={rewriteMode}>
+                  {conceptText}
+                </TextHighlight>
+                這些證據把中洋脊、海溝、地震帶與火山帶連成一個整體，形成今日的板塊構造學說。
+              </p>
+              <p>
+                因此，判斷題目時不能只背「中洋脊會形成新海床」，還要同時追蹤板塊邊界的完整循環：生成、移動、隱沒與回收。
+              </p>
 
-          {stage === "jumped-to-concept" || stage === "ai-remediated" || stage === "peer-note-added" ? (
-            <section className="aiDiagnosis" aria-live="polite">
-              <div className="noteMark">
-                <Sparkles size={17} />
-                AI 分析你的觀念錯在哪
-              </div>
-              <h3>需要補強：海底擴張與張裂型邊界</h3>
-              <p>{demoFlow.misconception}</p>
-            </section>
-          ) : null}
-
-          {aiNoteVisible ? (
-            <section className="personalNote" aria-live="polite">
-              <div className="noteMark">
-                <Sparkles size={17} />
-                AI 動態修改教材內容
-              </div>
-              <h3>{demoFlow.aiNoteTitle}</h3>
-              <p>{demoFlow.aiNoteBody}</p>
-              <div className="studentReflectionBox">
-                <strong>我的心得</strong>
-                <p>{demoFlow.studentReflection}</p>
-                <button className="inlineAiButton strong" type="button" onClick={addReflectionToPeerNotes}>
-                  <MessageSquarePlus size={16} />
-                  新增到共筆
-                </button>
-              </div>
-              {peerNoteAdded ? (
-                <p className="peerAddedHint">已加入共筆。下一位學生讀到這個段落時，可以 hover 共筆標記看到你的心得、AI 整理與常見錯誤觀念。</p>
+              {aiRevealStep >= 1 ? (
+                <aside className={`aiDiagnosis ${aiRevealStep === 1 ? "thinkingCard" : "revealCard"}`}>
+                  <span className="noteMark">
+                    <Sparkles size={15} /> AI 觀念診斷
+                  </span>
+                  <h3>你錯在把「海底擴張」看成單一步驟</h3>
+                  <p>{demoFlow.misconception}</p>
+                  {aiRevealStep < 3 ? (
+                    <div className="thinkingDots" aria-label="AI 正在分析">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  ) : (
+                    <div className="noteReason">
+                      補強方向：把「中洋脊生成新地殼」和「海溝隱沒回收舊地殼」合併成一條證據鏈。
+                    </div>
+                  )}
+                </aside>
               ) : null}
             </section>
-          ) : null}
 
-          <TextSection title="二、板塊是什麼？">
-            <p>
-              板塊構造學說認為，地球外層並非完整的一整片，而是由多個板塊拼合而成。板塊的主體是堅硬的岩石圈，
-              包含地殼與最上部地函；板塊則浮載並移動於較具可塑性的軟流圈之上。
-            </p>
-            <ul className="textbookList">
-              <li>
-                <b>張裂型邊界：</b>板塊彼此遠離，常見於中洋脊，岩漿上升後冷卻形成新的海洋地殼。
-              </li>
-              <li>
-                <b>聚合型邊界：</b>板塊彼此靠近，可能形成隱沒帶、海溝、島弧或褶皺山脈。
-              </li>
-              <li>
-                <b>錯動型邊界：</b>板塊沿水平方向錯移，常伴隨淺源地震與大型斷層。
-              </li>
-            </ul>
-          </TextSection>
-
-          <section className="quizBlock" id={demoFlow.questionId}>
-            <p className="quizLabel">讀完整章後的練習題</p>
-            <h2>根據證據判斷板塊邊界</h2>
-            <p className="questionPrompt">
-              某海域中央有連續海底山脈，附近出現淺源地震，且岩石年齡由山脈中心向兩側逐漸變老。
-              這最可能是哪一種板塊邊界？
-            </p>
-            <div className="practiceOptions">
-              {quizOptions.map((option) => {
-                const isSelected = selectedAnswerId === option.id;
-                const isCorrect = option.id === demoFlow.correctAnswerId;
-                return (
+            {aiNoteVisible ? (
+              <aside className="personalNote generatedNote">
+                <span className="noteMark">
+                  <Sparkles size={15} /> 已動態加入教材
+                </span>
+                <h3>{demoFlow.aiNoteTitle}</h3>
+                <p>{demoFlow.aiNoteBody}</p>
+                <div className="studentReflectionBox">
+                  <strong>你的心得草稿</strong>
+                  <p>{demoFlow.studentReflection}</p>
                   <button
-                    className={[
-                      "practiceOption",
-                      isSelected ? "selected" : "",
-                      selectedAnswerId && isCorrect ? "correct" : "",
-                      selectedAnswerId && isSelected && !isCorrect ? "wrong" : ""
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    disabled={selectedAnswerId !== null}
-                    key={option.id}
-                    onClick={() => answerQuestion(option.id)}
+                    className="inlineAiButton strong"
+                    data-testid="add-peer-note"
+                    onClick={() => setSelectionPanelVisible(true)}
                     type="button"
                   >
-                    <span>{option.id}</span>
-                    {option.label}
+                    <MessageSquarePlus size={16} /> 在這裡新增共筆
                   </button>
-                );
-              })}
-            </div>
+                </div>
+                {selectionPanelVisible ? (
+                  <div className="selectionPanel">
+                    <div>
+                      <b>新增到共筆</b>
+                      <p>系統會把你的心得與 AI 整理的常見錯誤觀念附在這個段落旁，下一位學生閱讀時可直接參考。</p>
+                    </div>
+                    <button className="inlineAiButton strong" onClick={addStudentPeerNote} type="button">
+                      <UsersRound size={16} /> 發布共筆
+                    </button>
+                  </div>
+                ) : null}
+                {peerNoteAdded ? (
+                  <div className="peerAddedHint">
+                    已加入段落旁的共筆標記。Demo 下一步可把滑鼠移到「共筆」上，展示下一位學生看到的重點與常見錯誤觀念。
+                  </div>
+                ) : null}
+              </aside>
+            ) : null}
 
-            {selectedAnswerId === null ? (
-              <button className="demoWrongButton" type="button" onClick={demoAnswerWrongQuestion}>
-                Demo：學生選錯答案 B
-              </button>
-            ) : (
-              <section className={isWrong ? "answerPanel wrong" : "answerPanel correct"} aria-live="polite">
-                <h3>{isWrong ? "答錯了。正確答案是 A：張裂型邊界。" : "答對了。"}</h3>
-                <p>
-                  題目中的「中洋脊、淺源地震、岩石年齡由中心向兩側變老」是一組張裂型邊界證據，
-                  表示板塊彼此遠離並形成新的海洋地殼。
-                </p>
-                <button className="jumpButton" type="button" onClick={jumpToTargetConcept}>
-                  <MousePointer2 size={16} />
-                  跳到對應觀念
-                </button>
-              </section>
-            )}
+            <h2>二、板塊邊界的類型</h2>
+            <p>
+              板塊邊界依運動方向可分為張裂型、聚合型與錯動型。張裂型邊界常見於中洋脊；聚合型邊界常伴隨隱沒作用、深源地震與火山弧；錯動型邊界則以水平錯移為主。
+            </p>
+            <div className="tableScroller">
+              <table className="comparisonTable">
+                <thead>
+                  <tr>
+                    <th>邊界類型</th>
+                    <th>主要運動</th>
+                    <th>常見地形</th>
+                    <th>地質現象</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th>張裂型</th>
+                    <td>板塊彼此遠離</td>
+                    <td>中洋脊、裂谷</td>
+                    <td>淺源地震、玄武岩質火山活動</td>
+                  </tr>
+                  <tr>
+                    <th>聚合型</th>
+                    <td>板塊彼此接近</td>
+                    <td>海溝、火山弧、造山帶</td>
+                    <td>淺至深源地震、安山岩質火山活動</td>
+                  </tr>
+                  <tr>
+                    <th>錯動型</th>
+                    <td>板塊水平錯移</td>
+                    <td>轉形斷層</td>
+                    <td>淺源地震頻繁</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </section>
 
-          <section className="readingHint">
-            <CheckCircle2 size={18} />
-            <p>
-              下一位學生讀到本段落時，只要把滑鼠移到共筆標記上，就能看到其他同學心得、AI 整理與常見錯誤觀念。
-            </p>
+          <section className="challengeSection">
+            <h2>章末練習</h2>
+            <div className="quizBlock" id={demoFlow.questionId}>
+              <p className="quizLabel">概念題・板塊構造證據</p>
+              <h3>下列哪一項最能完整說明「海底擴張」如何支持板塊構造學說？</h3>
+              <div className="practiceOptions">
+                {quizOptions.map((option) => {
+                  const isSelected = selectedAnswerId === option.id;
+                  const isCorrect = showAnswer && option.id === demoFlow.correctAnswerId;
+                  const isWrong = showAnswer && option.id === demoFlow.wrongAnswerId && isSelected;
+
+                  return (
+                    <button
+                      key={option.id}
+                      className={`practiceOption ${isSelected ? "selected" : ""} ${isCorrect ? "correct" : ""} ${
+                        isWrong ? "wrong" : ""
+                      }`}
+                      onClick={() => setSelectedAnswerId(option.id)}
+                      type="button"
+                    >
+                      <span>{option.id}</span>
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button className="demoWrongButton" data-testid="demo-wrong-answer" onClick={submitWrongAnswer} type="button">
+                Demo：學生選錯答案
+              </button>
+
+              {isWrongAnswer ? (
+                <div className="answerPanel wrong">
+                  <h4>答錯了。正確答案是 A</h4>
+                  <p>
+                    B 選項只描述「新海床生成」，卻忽略舊海洋地殼會在海溝隱沒回收，因此無法完整解釋地球表面面積維持與地震火山分布。
+                  </p>
+                  <button className="jumpButton" data-testid="jump-concept" onClick={jumpToTargetConcept} type="button">
+                    <MousePointer2 size={15} /> 跳到對應觀念
+                  </button>
+                </div>
+              ) : null}
+
+              {isCorrectAnswer ? (
+                <div className="answerPanel correct">
+                  <h4>答對了</h4>
+                  <p>你已經能把海底擴張、磁條帶、隱沒作用與板塊邊界連在一起。</p>
+                </div>
+              ) : null}
+            </div>
           </section>
         </article>
-      </section>
+      </div>
     </main>
   );
 }
 
-function TextSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="textbookSection">
-      <h2>{title}</h2>
-      <div>{children}</div>
-    </section>
-  );
+function TextHighlight({
+  active,
+  mode,
+  children
+}: {
+  active: boolean;
+  mode: RewriteMode;
+  children: ReactNode;
+}) {
+  const className = [
+    "rewritableText",
+    mode === "deleting" ? "deletingText" : "",
+    mode === "typing" ? "typingText" : "",
+    active ? "highlightText highlightSweep" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return <span className={className}>{children}</span>;
 }
 
 function PeerMarker({ notes }: { notes: PeerNote[] }) {
   return (
-    <span className="peerMarker" tabIndex={0}>
-      <UsersRound size={14} />
-      共筆
-      <span className="peerPopover" role="tooltip">
-        <span className="popoverTitle">這個觀念的共筆與常見錯誤</span>
+    <button className="peerMarker" data-testid="peer-marker" type="button">
+      <UsersRound size={15} />
+      共筆 {notes.length}
+      <span className="peerPopover">
+        <strong className="popoverTitle">其他同學對這個觀念的整理</strong>
         <span className="peerNoteList">
           {notes.map((note, index) => (
             <span className={`peerNoteItem ${note.kind}`} key={`${note.author}-${index}`}>
@@ -362,6 +459,6 @@ function PeerMarker({ notes }: { notes: PeerNote[] }) {
           ))}
         </span>
       </span>
-    </span>
+    </button>
   );
 }

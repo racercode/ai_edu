@@ -1,4 +1,4 @@
 ﻿async (page) => {
-  await page.getByText("?梁?").first().hover();
-  await page.waitForTimeout(2000);
+  await page.locator("[data-testid='peer-marker']").hover();
+  await page.waitForTimeout(2200);
 }
